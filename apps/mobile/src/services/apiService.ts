@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import { MediaMetadata, MediaFormat, PlatformInfo } from '../types/media';
 
-let cachedBackendUrl = 'http://172.16.74.21:4000/api';
+let cachedBackendUrl = 'https://media-download-app-production.up.railway.app/api';
 const CONFIG_FILE = `${FileSystem.documentDirectory}backend_config.json`;
 
 /**
