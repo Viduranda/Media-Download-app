@@ -78,13 +78,56 @@ async function checkDirectMediaUrl(url) {
 }
 
 /**
+ * Helper to ensure yt-dlp binary is present locally or downloaded automatically
+ */
+async function ensureYtDlpBinary() {
+  const isWindows = process.platform === 'win32';
+  const binDir = path.join(__dirname, '../../bin');
+  if (!fs.existsSync(binDir)) {
+    fs.mkdirSync(binDir, { recursive: true });
+  }
+
+  const binaryName = isWindows ? 'yt-dlp.exe' : 'yt-dlp';
+  const localExe = path.join(binDir, binaryName);
+
+  if (fs.existsSync(localExe)) {
+    return localExe;
+  }
+
+  // Check system PATH
+  try {
+    const checkCmd = isWindows ? 'where yt-dlp' : 'which yt-dlp';
+    require('child_process').execSync(checkCmd, { stdio: 'ignore' });
+    return 'yt-dlp';
+  } catch (e) {
+    // Not in system PATH, auto-download binary
+  }
+
+  console.log(`yt-dlp binary missing. Auto-downloading latest ${binaryName}...`);
+  const downloadUrl = isWindows
+    ? 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe'
+    : 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
+
+  const res = await fetch(downloadUrl);
+  if (!res.ok) throw new Error(`Failed to fetch yt-dlp binary: ${res.statusText}`);
+  const buffer = await res.buffer();
+  fs.writeFileSync(localExe, buffer);
+
+  if (!isWindows) {
+    fs.chmodSync(localExe, '755');
+  }
+
+  console.log(`yt-dlp binary successfully saved to ${localExe}`);
+  return localExe;
+}
+
+/**
  * Execute yt-dlp binary command and parse JSON output
  */
-function extractWithYtDlp(url) {
-  return new Promise((resolve, reject) => {
-    const localExe = path.join(__dirname, '../../bin/yt-dlp.exe');
-    const ytdlpPath = fs.existsSync(localExe) ? localExe : 'yt-dlp';
+async function extractWithYtDlp(url) {
+  const ytdlpPath = await ensureYtDlpBinary();
 
+  return new Promise((resolve, reject) => {
     const ytdlp = spawn(ytdlpPath, ['-j', '--no-warnings', '--no-check-certificates', url]);
     let stdoutData = '';
     let stderrData = '';

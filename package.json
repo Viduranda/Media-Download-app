@@ -1,0 +1,20 @@
+{
+  "name": "media-downloader-api",
+  "version": "1.0.0",
+  "description": "Universal Media Extractor Backend API for Instagram, YouTube, TikTok, Facebook & Direct Links",
+  "main": "apps/backend/src/index.js",
+  "scripts": {
+    "start": "node apps/backend/src/index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.1",
+    "helmet": "^7.1.0",
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
