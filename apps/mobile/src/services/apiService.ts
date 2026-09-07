@@ -1,7 +1,46 @@
+import * as FileSystem from 'expo-file-system';
 import { MediaMetadata, MediaFormat, PlatformInfo } from '../types/media';
 
-// Configurable PC Local IP / Deployed Server URL
-export const BACKEND_API_URL = 'http://172.16.74.21:4000/api';
+let cachedBackendUrl = 'http://172.16.74.21:4000/api';
+const CONFIG_FILE = `${FileSystem.documentDirectory}backend_config.json`;
+
+/**
+ * Get active Backend API URL from storage or fallback
+ */
+export async function getBackendApiUrl(): Promise<string> {
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(CONFIG_FILE);
+    if (fileInfo.exists) {
+      const content = await FileSystem.readAsStringAsync(CONFIG_FILE);
+      const data = JSON.parse(content);
+      if (data.url && typeof data.url === 'string') {
+        cachedBackendUrl = data.url.trim();
+      }
+    }
+  } catch (e) {
+    // fallback
+  }
+  return cachedBackendUrl;
+}
+
+/**
+ * Update and persist Backend API URL
+ */
+export async function setBackendApiUrl(newUrl: string): Promise<void> {
+  let cleanUrl = newUrl.trim();
+  if (cleanUrl.endsWith('/')) {
+    cleanUrl = cleanUrl.slice(0, -1);
+  }
+  if (!cleanUrl.endsWith('/api')) {
+    cleanUrl = `${cleanUrl}/api`;
+  }
+  cachedBackendUrl = cleanUrl;
+  try {
+    await FileSystem.writeAsStringAsync(CONFIG_FILE, JSON.stringify({ url: cachedBackendUrl }));
+  } catch (e) {
+    console.error('Failed to save backend URL config:', e);
+  }
+}
 
 /**
  * Identify social platform from link
@@ -53,13 +92,14 @@ function isDirectMediaFile(url: string): boolean {
 export async function extractMedia(url: string): Promise<MediaMetadata> {
   const cleanUrl = url.trim();
   const platform = getPlatformFromUrl(cleanUrl);
+  const activeBackendUrl = await getBackendApiUrl();
 
   // 1. Try backend API server first
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch(`${BACKEND_API_URL}/extract`, {
+    const response = await fetch(`${activeBackendUrl}/extract`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: cleanUrl }),
@@ -75,24 +115,24 @@ export async function extractMedia(url: string): Promise<MediaMetadata> {
       }
     }
   } catch (error) {
-    console.warn('Backend server unreachable at BACKEND_API_URL:', error);
+    console.warn(`Backend server unreachable at ${activeBackendUrl}:`, error);
   }
 
   // 2. If it's a direct file link (e.g. .mp4, .mp3, .jpg), allow downloading directly without backend proxy
   if (isDirectMediaFile(cleanUrl)) {
-    return generateClientFallbackMetadata(cleanUrl, platform, true);
+    return generateClientFallbackMetadata(cleanUrl, platform, true, activeBackendUrl);
   }
 
   // 3. For social media links (YouTube, Instagram, TikTok, etc.), backend is required
   throw new Error(
-    `Cannot connect to backend server (${BACKEND_API_URL}). Please verify your backend server is online or update BACKEND_API_URL in apiService.ts.`
+    `Cannot connect to backend server (${activeBackendUrl}). Tap the Settings icon ⚙️ in the top right header to set your live cloud or Localtunnel server URL.`
   );
 }
 
 /**
  * Generate fallback metadata for direct file links
  */
-function generateClientFallbackMetadata(url: string, platform: PlatformInfo, isDirect: boolean): MediaMetadata {
+function generateClientFallbackMetadata(url: string, platform: PlatformInfo, isDirect: boolean, activeBackendUrl: string): MediaMetadata {
   const lowerUrl = url.toLowerCase();
   let defaultType: 'video' | 'audio' | 'image' = 'video';
   let defaultExt = 'mp4';
@@ -110,7 +150,7 @@ function generateClientFallbackMetadata(url: string, platform: PlatformInfo, isD
   // Use direct URL for direct files, or proxy for backend
   const downloadUrl = isDirect
     ? url
-    : `${BACKEND_API_URL}/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filenameFromUrl)}&type=${defaultType}&ext=${defaultExt}`;
+    : `${activeBackendUrl}/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filenameFromUrl)}&type=${defaultType}&ext=${defaultExt}`;
 
   const formats: MediaFormat[] = [];
 
