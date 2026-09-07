@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "Media Downloader",
+    "slug": "media-downloader",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mediadownloader.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app requires access to your Photo Library to save downloaded videos and photos.",
+        "NSPhotoLibraryAddUsageDescription": "This app requires permission to save downloaded media files to your Photos.",
+        "NSMicrophoneUsageDescription": "This app uses audio capabilities for background MP3 playback.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F172A"
+      },
+      "package": "com.mediadownloader.app",
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.INTERNET"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Media Downloader to save photos to your library.",
+          "savePhotosPermission": "Allow Media Downloader to save photos to your library.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2a6ce332-2156-4265-8f06-a78698ec6453"
+      }
+    }
+  }
+}
