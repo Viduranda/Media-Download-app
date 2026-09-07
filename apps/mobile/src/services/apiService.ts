@@ -30,13 +30,31 @@ export function getPlatformFromUrl(url: string): PlatformInfo {
 }
 
 /**
+ * Check if a URL points directly to a raw media file (MP4, MP3, JPG, PNG, WEBP)
+ */
+function isDirectMediaFile(url: string): boolean {
+  const lowerUrl = url.toLowerCase();
+  return (
+    lowerUrl.includes('.mp4') ||
+    lowerUrl.includes('.webm') ||
+    lowerUrl.includes('.mp3') ||
+    lowerUrl.includes('.wav') ||
+    lowerUrl.includes('.m4a') ||
+    lowerUrl.includes('.jpg') ||
+    lowerUrl.includes('.jpeg') ||
+    lowerUrl.includes('.png') ||
+    lowerUrl.includes('.webp')
+  );
+}
+
+/**
  * Extract media information from URL using local server, public cloud engine, or direct URL parser
  */
 export async function extractMedia(url: string): Promise<MediaMetadata> {
   const cleanUrl = url.trim();
   const platform = getPlatformFromUrl(cleanUrl);
 
-  // 1. Try local / custom backend API server first
+  // 1. Try backend API server first
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -60,14 +78,21 @@ export async function extractMedia(url: string): Promise<MediaMetadata> {
     console.warn('Backend server unreachable at BACKEND_API_URL:', error);
   }
 
-  // 2. Fallback direct stream format
-  return generateClientFallbackMetadata(cleanUrl, platform);
+  // 2. If it's a direct file link (e.g. .mp4, .mp3, .jpg), allow downloading directly without backend proxy
+  if (isDirectMediaFile(cleanUrl)) {
+    return generateClientFallbackMetadata(cleanUrl, platform, true);
+  }
+
+  // 3. For social media links (YouTube, Instagram, TikTok, etc.), backend is required
+  throw new Error(
+    `Cannot connect to backend server (${BACKEND_API_URL}). Please verify your backend server is online or update BACKEND_API_URL in apiService.ts.`
+  );
 }
 
 /**
- * Generate fallback metadata for direct file links or proxy stream links
+ * Generate fallback metadata for direct file links
  */
-function generateClientFallbackMetadata(url: string, platform: PlatformInfo): MediaMetadata {
+function generateClientFallbackMetadata(url: string, platform: PlatformInfo, isDirect: boolean): MediaMetadata {
   const lowerUrl = url.toLowerCase();
   let defaultType: 'video' | 'audio' | 'image' = 'video';
   let defaultExt = 'mp4';
@@ -82,8 +107,10 @@ function generateClientFallbackMetadata(url: string, platform: PlatformInfo): Me
 
   const filenameFromUrl = `${platform.name}_Media`;
 
-  // Route download through backend proxy stream endpoint
-  const proxyDownloadUrl = `${BACKEND_API_URL}/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filenameFromUrl)}&type=${defaultType}&ext=${defaultExt}`;
+  // Use direct URL for direct files, or proxy for backend
+  const downloadUrl = isDirect
+    ? url
+    : `${BACKEND_API_URL}/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filenameFromUrl)}&type=${defaultType}&ext=${defaultExt}`;
 
   const formats: MediaFormat[] = [];
 
@@ -91,18 +118,10 @@ function generateClientFallbackMetadata(url: string, platform: PlatformInfo): Me
     formats.push({
       id: 'video-direct',
       quality: 'Video Stream (MP4)',
-      resolution: '720p / HD',
+      resolution: 'Original Quality',
       ext: 'mp4',
       type: 'video',
-      downloadUrl: proxyDownloadUrl
-    });
-    formats.push({
-      id: 'audio-direct',
-      quality: 'Audio Stream (MP3)',
-      resolution: 'Audio Only',
-      ext: 'mp3',
-      type: 'audio',
-      downloadUrl: `${BACKEND_API_URL}/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filenameFromUrl)}&type=audio&ext=mp3`
+      downloadUrl: downloadUrl
     });
   } else if (defaultType === 'audio') {
     formats.push({
@@ -111,7 +130,7 @@ function generateClientFallbackMetadata(url: string, platform: PlatformInfo): Me
       resolution: 'Audio Only',
       ext: 'mp3',
       type: 'audio',
-      downloadUrl: proxyDownloadUrl
+      downloadUrl: downloadUrl
     });
   } else if (defaultType === 'image') {
     formats.push({
@@ -120,7 +139,7 @@ function generateClientFallbackMetadata(url: string, platform: PlatformInfo): Me
       resolution: 'Original Quality',
       ext: defaultExt,
       type: 'image',
-      downloadUrl: proxyDownloadUrl
+      downloadUrl: downloadUrl
     });
   }
 

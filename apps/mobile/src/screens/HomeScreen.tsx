@@ -32,6 +32,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const handleSelectFormat = async (format: MediaFormat) => {
     if (!mediaData) return;
     try {
+      if (!format.downloadUrl) {
+        Alert.alert('Download Error', 'Download URL is invalid or backend server is offline.');
+        return;
+      }
       await downloadManager.startDownload(mediaData, format);
       Alert.alert(
         'Download Started',
@@ -41,8 +45,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           { text: 'View Downloads', onPress: () => navigation.navigate('Downloads') }
         ]
       );
-    } catch (e) {
-      Alert.alert('Download Error', 'Could not start download.');
+    } catch (e: any) {
+      Alert.alert('Download Error', e?.message || 'Could not start download.');
     }
   };
 
