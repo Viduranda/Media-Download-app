@@ -34,26 +34,35 @@ function detectPlatform(url) {
  */
 async function checkDirectMediaUrl(url) {
   try {
-    const headRes = await fetch(url, { method: 'HEAD', timeout: 5000 });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const headRes = await fetch(url, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(timeoutId);
+
     const contentType = headRes.headers.get('content-type') || '';
     const contentLength = headRes.headers.get('content-length');
 
     if (contentType.startsWith('video/')) {
       const ext = contentType.includes('mp4') ? 'mp4' : 'webm';
+      const parsedPath = new URL(url).pathname;
+      const baseName = path.basename(parsedPath);
       return {
         isDirect: true,
         type: 'video',
-        title: path.basename(new URL(url).pathname) || 'Downloaded Video',
+        title: (baseName && baseName !== '/') ? baseName : 'Downloaded Video',
         url: url,
         mimeType: contentType,
         fileSize: contentLength ? parseInt(contentLength, 10) : null,
         ext: ext
       };
     } else if (contentType.startsWith('audio/')) {
+      const parsedPath = new URL(url).pathname;
+      const baseName = path.basename(parsedPath);
       return {
         isDirect: true,
         type: 'audio',
-        title: path.basename(new URL(url).pathname) || 'Downloaded Audio',
+        title: (baseName && baseName !== '/') ? baseName : 'Downloaded Audio',
         url: url,
         mimeType: contentType,
         fileSize: contentLength ? parseInt(contentLength, 10) : null,
@@ -61,10 +70,12 @@ async function checkDirectMediaUrl(url) {
       };
     } else if (contentType.startsWith('image/')) {
       const ext = contentType.includes('png') ? 'png' : 'jpg';
+      const parsedPath = new URL(url).pathname;
+      const baseName = path.basename(parsedPath);
       return {
         isDirect: true,
         type: 'image',
-        title: path.basename(new URL(url).pathname) || 'Downloaded Image',
+        title: (baseName && baseName !== '/') ? baseName : 'Downloaded Image',
         url: url,
         mimeType: contentType,
         fileSize: contentLength ? parseInt(contentLength, 10) : null,
