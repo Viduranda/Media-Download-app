@@ -36,9 +36,9 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
-  console.log(` Media Downloader API Server running on port ${PORT}`);
-  console.log(` Health check: http://localhost:${PORT}/health`);
+  console.log(` Media Downloader API Server running on 0.0.0.0:${PORT}`);
+  console.log(` Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`====================================================`);
 });
